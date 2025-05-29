@@ -6,7 +6,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Button } from "@/components/ui/button";
 
 export default function Header() {
-  const { user, isLoading, logout } = useAuth();
+  const { user,logout } = useAuth();
 
   return (
     <header>
@@ -31,7 +31,7 @@ export default function Header() {
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              !isLoading && <Link href="/login" className="hover:text-gray-700">Login</Link>
+              null
             )}
           </div>
         </div>
