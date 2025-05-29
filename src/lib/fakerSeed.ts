@@ -11,11 +11,15 @@ process.on('unhandledRejection', (reason, promise) => {
 });
 
 const DESIRED_CATEGORIES = 100;
+interface MongoError extends Error {
+    code?: number;
+}
 
 async function seedCategories() {
   try {
     await dbConnect();
     console.log('Connected to MongoDB for seeding.');
+
     const categories = Array.from({ length: DESIRED_CATEGORIES }, () => ({
       name: faker.commerce.department(),
     }));
@@ -25,7 +29,7 @@ async function seedCategories() {
       const inserted = await Category.insertMany(categories, { ordered: false });
       console.log(`Successfully inserted ${inserted.length} categories (duplicates skipped).`);
     } catch (err: unknown) {
-      if (err instanceof Error && (err as any).code === 11000) {
+      if (typeof err === 'object' && err !== null && 'code' in err && (err as MongoError).code === 11000) {
         console.warn(
           'Duplicate key errors occurred during seeding; non-duplicate categories were inserted.'
         );

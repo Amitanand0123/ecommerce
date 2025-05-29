@@ -42,7 +42,8 @@ export const sendVerificationEmail = async (email: string, code: string): Promis
   try {
     const info = await transporter.sendMail(mailOptions);
     console.log('Email sent via Mailtrap: %s', info.messageId);
-  } catch (_error) {
+  } catch (error) {
+    console.error('Error sending email via Mailtrap:', error);
     throw new Error('Failed to send verification email.');
   }
 };

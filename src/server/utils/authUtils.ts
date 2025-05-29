@@ -19,7 +19,8 @@ export const generateToken=(userId:string):string => {
 export const verifyToken=(token:string):{userId:string} | null => {
     try {
         return jwt.verify(token,process.env.JWT_SECRET!) as {userId:string}
-    } catch (_e) {
+    } catch (error) {
+        console.log("Error verifying token:",error)
         return null
     }
 }
