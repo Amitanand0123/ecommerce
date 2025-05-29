@@ -47,7 +47,7 @@ export default function InterestsPage() {
   const totalPages = categoriesData?.totalPages || 1;
 
   const renderPagination = () => {
-    const buttons: JSX.Element[] = [];
+    const buttons: React.ReactElement[] = [];
     let startPage: number, endPage: number;
 
     if (currentPage <= 3) {
@@ -123,7 +123,7 @@ export default function InterestsPage() {
       <Card className="w-full max-w-lg min-h-[550px]">
         <CardHeader className="text-center">
           <CardTitle className="text-3xl font-bold mt-4">Please mark your interests!</CardTitle>
-          <CardDescription className="mt-2 text-black mt-4">We will keep you notified.</CardDescription>
+          <CardDescription className="text-black mt-4">We will keep you notified.</CardDescription>
           <hr className="w-full border-t border-gray-200" />
         </CardHeader>
         <CardContent className='ml-4'>
