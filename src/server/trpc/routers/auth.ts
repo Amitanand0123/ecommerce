@@ -1,12 +1,20 @@
+// src/server/trpc/routers/auth.ts
 import User from "@/server/db/models/User";
 import { protectedProcedure, publicProcedure, router } from "../trpc";
-import {z} from 'zod'
+import { z } from 'zod'; // Make sure z is imported
 import { TRPCError } from "@trpc/server";
 import { comparePassword, generateToken, generateVerificationCode, hashPassword } from "@/server/utils/authUtils";
 import { sendVerificationEmail } from "@/server/utils/mailer";
 
+// Define a Zod schema for the user object that will be returned
+const UserOutputSchema = z.object({
+    id: z.string(),
+    name: z.string(),
+    email: z.string(),
+});
 
-export const authRouter=router({
+export const authRouter = router({
+    // ... (register and verifyEmail mutations) ...
     register:publicProcedure
         .input(z.object({
             name:z.string().min(3,{message:"Name must be at least 3 characters"}),
@@ -35,7 +43,14 @@ export const authRouter=router({
                 verificationCodeExpires
             })
             await newUser.save()
-            await sendVerificationEmail(input.email,verificationCode)
+            try {
+                await sendVerificationEmail(input.email,verificationCode);
+            } catch (emailError) {
+                console.error("Failed to send verification email during registration:", emailError);
+                // Decide if you want to throw an error that stops registration
+                // or just log it and let registration proceed.
+                // For now, let's assume registration can proceed even if email fails.
+            }
             return {
                 success:true,
                 email:input.email,
@@ -68,45 +83,64 @@ export const authRouter=router({
                 message:'Email verified successfully.'
             }
         }),
-    login:publicProcedure
+
+    login: publicProcedure
         .input(z.object({
-            email:z.string().email(),
-            password:z.string()
+            email: z.string().email(),
+            password: z.string()
         }))
-        .mutation(async({input})=>{
-            const user=await User.findOne({email:input.email})
-            if(!user){
+        // Add the output schema here
+        .output(z.object({
+            success: z.boolean(),
+            token: z.string(),
+            user: UserOutputSchema, // Use the defined schema for the user object
+        }))
+        .mutation(async ({ input }) => {
+            const user = await User.findOne({ email: input.email });
+            if (!user) {
                 throw new TRPCError({
-                    code:'NOT_FOUND',
-                    message:'Invalid credentials'
-                })
+                    code: 'NOT_FOUND',
+                    message: 'Invalid credentials'
+                });
             }
-            if(!user.isVerified){
+            if (!user.isVerified) {
+                // It's good to send the email here for the client to use in the verify-email redirect
                 throw new TRPCError({
-                    code:'FORBIDDEN',
-                    message:'Please verify your email before logging in.'
-                })
+                    code: 'FORBIDDEN',
+                    message: 'Please verify your email before logging in.',
+                    cause: { email: user.email } // Pass email in cause
+                });
             }
-            const isPasswordValid=await comparePassword(input.password,user.passwordHash)
-            if(!isPasswordValid){
+            const isPasswordValid = await comparePassword(input.password, user.passwordHash);
+            if (!isPasswordValid) {
                 throw new TRPCError({
-                    code:'UNAUTHORIZED',
-                    message:'Invalid credentials'
-                })
+                    code: 'UNAUTHORIZED',
+                    message: 'Invalid credentials'
+                });
             }
-            const token=generateToken(user._id.toString())
+            const token = generateToken(user._id.toString());
             return {
-                success:true,
+                success: true,
                 token,
-                user:{
-                    id:user._id.toString(),
-                    name:user.name,
-                    email:user.email
+                user: { // This structure will now be validated against UserOutputSchema
+                    id: user._id.toString(),
+                    name: user.name,
+                    email: user.email
                 },
-            }
+            };
         }),
-        getCurrentUser:protectedProcedure
-            .query(async({ctx})=>{
-                return ctx.user
-            })
-})
+    getCurrentUser: protectedProcedure
+        // Also add output schema here for consistency
+        .output(UserOutputSchema.nullable()) // User can be null if not authenticated/found (though protectedProcedure handles this)
+        .query(async ({ ctx }) => {
+            // ctx.user should already match UserOutputSchema if token verification is correct
+            // but if ctx.user can be null before this, ensure the types match.
+            // The `protectedProcedure` should ensure ctx.user is not null.
+            if (!ctx.user) return null; // Should not happen with protectedProcedure
+            return {
+                id: ctx.user._id.toString(), // Ensure _id is converted
+                name: ctx.user.name,
+                email: ctx.user.email,
+            };
+        })
+});
