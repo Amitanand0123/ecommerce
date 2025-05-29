@@ -9,9 +9,9 @@ export default function Header() {
   const { user, logout } = useAuth();
 
   return (
-    <header>
+    <header >
       {/* Top Section - Help, Orders & Returns, User Info */}
-      <div className="bg-white border-b border-gray-200">
+      <div className="bg-white border-b border-gray-200 mx-4">
         <div className="container mx-auto px-4 md:px-0">
           <div className="flex justify-end items-center py-2 text-sm space-x-6">
             <Link href="#" className="hover:text-gray-700">Help</Link>
@@ -38,7 +38,7 @@ export default function Header() {
       </div>
 
       {/* Main Navigation Section */}
-      <div className="bg-white border-b">
+      <div className="bg-white border-b mx-4">
         <div className="container mx-auto py-4 px-4 md:px-0">
           <div className="flex justify-between items-center">
             <Link href="/" className="text-2xl font-bold">
