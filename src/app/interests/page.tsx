@@ -7,17 +7,13 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-// ICategory is a Mongoose Document. We need a type for the plain object.
-// import { ICategory } from '@/server/db/models/Category'; // Keep for reference if needed elsewhere
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 
-// Define a type for the plain category object as returned by your tRPC endpoint
 interface PlainCategory {
-  _id: string; // Because you convert it to string in the backend
+  _id: string;
   name: string;
-  // Add other properties if your tRPC endpoint returns them and you use them
-  createdAt?: string; // Or Date, depending on serialization
-  updatedAt?: string; // Or Date
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export default function InterestsPage() {
@@ -25,7 +21,6 @@ export default function InterestsPage() {
   const [selectedInterests, setSelectedInterests] = useState<Set<string>>(new Set());
   const itemsPerPage = 6;
 
-  // categoriesData will implicitly get its type from the tRPC router definition
   const { data: categoriesData } = trpc.category.getCategories.useQuery({ page: currentPage, limit: itemsPerPage });
 
   const { data: userInterestsData, refetch: refetchUserInterests } = trpc.category.getUserInterests.useQuery(undefined, {
@@ -56,13 +51,16 @@ export default function InterestsPage() {
     updateInterestsMutation.mutate({ categoryIds: Array.from(newSet) });
   };
 
-  // Explicitly type `categories` using the PlainCategory type
-  const categories: PlainCategory[] = categoriesData?.categories || [];
+  // Use a type assertion here to tell TypeScript the expected shape
+  const categories: PlainCategory[] = (categoriesData?.categories as PlainCategory[] | undefined) || [];
+  // Or, slightly more verbose but perhaps clearer:
+  // const categories: PlainCategory[] = categoriesData?.categories ? categoriesData.categories as PlainCategory[] : [];
+
   const totalPages = categoriesData?.totalPages || 1;
 
   const renderPagination = () => {
     const buttons: React.ReactElement[] = [];
-    // ... (rest of pagination logic remains the same)
+    // ... (rest of pagination logic)
     let startPage: number, endPage: number;
 
     if (currentPage <= 3) {
@@ -147,16 +145,14 @@ export default function InterestsPage() {
           {categories.length === 0 && !categoriesData && (
             <p>Loading categories...</p>
           )}
-          {/* Removed the 'npm run seed' part to avoid unescaped entities, as it was also an ESLint issue before */}
           {categoriesData && categories.length === 0 && (
             <p>No categories found.</p>
           )}
           <div className="space-y-3 pb-6">
-            {/* Now the type of `category` in the map callback should correctly be `PlainCategory` */}
-            {categories.map((category: PlainCategory) => (
+            {categories.map((category) => ( // Type PlainCategory is inferred from the `categories` array type
               <div key={category._id} className="flex items-center space-x-3 mt-6 rounded hover:bg-gray-50">
                 <Checkbox
-                  id={category._id} // _id is already a string
+                  id={category._id}
                   checked={selectedInterests.has(category._id)}
                   onCheckedChange={() => handleCheckboxChange(category._id)}
                   disabled={updateInterestsMutation.isPending}
