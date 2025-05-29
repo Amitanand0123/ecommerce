@@ -24,8 +24,8 @@ async function seedCategories() {
     try {
       const inserted = await Category.insertMany(categories, { ordered: false });
       console.log(`Successfully inserted ${inserted.length} categories (duplicates skipped).`);
-    } catch (err: any) {
-      if (err.code === 11000) {
+    } catch (err: unknown) {
+      if (err instanceof Error && (err as any).code === 11000) {
         console.warn(
           'Duplicate key errors occurred during seeding; non-duplicate categories were inserted.'
         );

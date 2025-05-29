@@ -1,11 +1,9 @@
 import {z} from 'zod'
 import { protectedProcedure, publicProcedure, router } from '../trpc'
-import Category from '@/server/db/models/Category';
+import Category, { ICategory } from '@/server/db/models/Category';
 import User from '@/server/db/models/User';
 import { TRPCError } from '@trpc/server';
 import mongoose from 'mongoose';
-
-
 
 export const categoryRouter=router({
     getCategories:publicProcedure
@@ -30,7 +28,7 @@ export const categoryRouter=router({
         .query(async ({ctx})=>{
             const user=await User.findById(ctx.user._id).populate('interestedCategories')
             if(!user) throw new TRPCError({code:'NOT_FOUND',message:'User not found'})
-            return user.interestedCategories.map((cat:any)=>cat._id.toString())
+            return user.interestedCategories.map((cat:ICategory)=>cat._id.toString())
         }),
     updateUserInterests:protectedProcedure
         .input(z.object({
@@ -50,6 +48,5 @@ export const categoryRouter=router({
                 success:true,
                 message:'Interests updated successfully'
             }
-
         })
 })

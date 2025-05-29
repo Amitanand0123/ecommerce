@@ -5,8 +5,6 @@ import { trpc } from '@/lib/trpc/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle } from 'lucide-react';
 
 export default function VerifyEmailPage() {
   const router = useRouter();
@@ -14,7 +12,6 @@ export default function VerifyEmailPage() {
   const email = searchParams.get('email') || '';
   const [code, setCode] = useState<string[]>(Array(8).fill(''));
   const [serverError, setServerError] = useState<string | null>(null);
-  const [emailError, setEmailError] = useState<string | null>(null);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   const verifyMutation = trpc.auth.verifyEmail.useMutation({
@@ -75,12 +72,6 @@ export default function VerifyEmailPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {emailError && (
-            <Alert variant="destructive" className="mb-4">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{emailError}</AlertDescription>
-            </Alert>
-          )}
           <form onSubmit={handleSubmit} className="space-y-6">
             {serverError && <p className="text-red-500 text-sm text-center">{serverError}</p>}
             <div>
