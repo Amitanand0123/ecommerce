@@ -16,9 +16,6 @@ export default function InterestsPage() {
   const { data: categoriesData } = trpc.category.getCategories.useQuery({ page: currentPage, limit: itemsPerPage });
 
   const { data: userInterestsData, refetch: refetchUserInterests } = trpc.category.getUserInterests.useQuery(undefined, {
-    onSuccess: (data) => {
-      setSelectedInterests(new Set(data || []));
-    },
     retry: false
   });
 
@@ -131,8 +128,11 @@ export default function InterestsPage() {
         </CardHeader>
         <CardContent className='ml-4'>
           <h3 className="text-xl font-semibold mb-4 pt-4">My saved interests!</h3>
-          {categories.length === 0 && (
-            <p>No categories found.</p>
+          {categories.length === 0 && !categoriesData && (
+            <p>Loading categories...</p>
+          )}
+          {categoriesData && categories.length === 0 && (
+            <p>No categories found. Admins can seed them using 'npm run seed'.</p>
           )}
           <div className="space-y-3 pb-6">
             {categories.map((category: ICategory) => (
