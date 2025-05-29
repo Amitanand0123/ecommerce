@@ -1,18 +1,31 @@
+// src/app/interests/page.tsx
 'use client';
+import React from 'react';
 import { useState, useEffect } from 'react';
 import { trpc } from '@/lib/trpc/client';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { ICategory } from '@/server/db/models/Category';
+// ICategory is a Mongoose Document. We need a type for the plain object.
+// import { ICategory } from '@/server/db/models/Category'; // Keep for reference if needed elsewhere
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
+
+// Define a type for the plain category object as returned by your tRPC endpoint
+interface PlainCategory {
+  _id: string; // Because you convert it to string in the backend
+  name: string;
+  // Add other properties if your tRPC endpoint returns them and you use them
+  createdAt?: string; // Or Date, depending on serialization
+  updatedAt?: string; // Or Date
+}
 
 export default function InterestsPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedInterests, setSelectedInterests] = useState<Set<string>>(new Set());
   const itemsPerPage = 6;
 
+  // categoriesData will implicitly get its type from the tRPC router definition
   const { data: categoriesData } = trpc.category.getCategories.useQuery({ page: currentPage, limit: itemsPerPage });
 
   const { data: userInterestsData, refetch: refetchUserInterests } = trpc.category.getUserInterests.useQuery(undefined, {
@@ -43,11 +56,13 @@ export default function InterestsPage() {
     updateInterestsMutation.mutate({ categoryIds: Array.from(newSet) });
   };
 
-  const categories = categoriesData?.categories || [];
+  // Explicitly type `categories` using the PlainCategory type
+  const categories: PlainCategory[] = categoriesData?.categories || [];
   const totalPages = categoriesData?.totalPages || 1;
 
   const renderPagination = () => {
     const buttons: React.ReactElement[] = [];
+    // ... (rest of pagination logic remains the same)
     let startPage: number, endPage: number;
 
     if (currentPage <= 3) {
@@ -118,6 +133,7 @@ export default function InterestsPage() {
     return <div className="flex items-center justify-center space-x-1 mt-6">{buttons}</div>;
   };
 
+
   return (
     <div className="flex justify-center items-start pt-10 min-h-screen">
       <Card className="w-full max-w-lg min-h-[550px]">
@@ -131,20 +147,22 @@ export default function InterestsPage() {
           {categories.length === 0 && !categoriesData && (
             <p>Loading categories...</p>
           )}
+          {/* Removed the 'npm run seed' part to avoid unescaped entities, as it was also an ESLint issue before */}
           {categoriesData && categories.length === 0 && (
             <p>No categories found.</p>
           )}
           <div className="space-y-3 pb-6">
-            {categories.map((category: ICategory) => (
-              <div key={category._id.toString()} className="flex items-center space-x-3 mt-6 rounded hover:bg-gray-50">
+            {/* Now the type of `category` in the map callback should correctly be `PlainCategory` */}
+            {categories.map((category: PlainCategory) => (
+              <div key={category._id} className="flex items-center space-x-3 mt-6 rounded hover:bg-gray-50">
                 <Checkbox
-                  id={category._id.toString()}
-                  checked={selectedInterests.has(category._id.toString())}
-                  onCheckedChange={() => handleCheckboxChange(category._id.toString())}
+                  id={category._id} // _id is already a string
+                  checked={selectedInterests.has(category._id)}
+                  onCheckedChange={() => handleCheckboxChange(category._id)}
                   disabled={updateInterestsMutation.isPending}
                   className="cursor-pointer size-6"
                 />
-                <Label htmlFor={category._id.toString()} className="text-base cursor-pointer">
+                <Label htmlFor={category._id} className="text-base cursor-pointer">
                   {category.name}
                 </Label>
               </div>
