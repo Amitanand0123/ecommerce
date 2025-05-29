@@ -132,7 +132,7 @@ export default function InterestsPage() {
             <p>Loading categories...</p>
           )}
           {categoriesData && categories.length === 0 && (
-            <p>No categories found. Admins can seed them using 'npm run seed'.</p>
+            <p>No categories found.</p>
           )}
           <div className="space-y-3 pb-6">
             {categories.map((category: ICategory) => (
