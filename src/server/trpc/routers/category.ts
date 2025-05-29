@@ -1,7 +1,8 @@
 import {z} from 'zod'
 import { protectedProcedure, publicProcedure, router } from '../trpc'
-import Category, { ICategory } from '@/server/db/models/Category';
-import User from '@/server/db/models/User';
+// Import the correct document interface and the model
+import CategoryModel, { ICategoryDocument } from '@/server/db/models/Category'; 
+import UserModel from '@/server/db/models/User'; // Assuming UserModel is the default export from User.ts
 import { TRPCError } from '@trpc/server';
 import mongoose from 'mongoose';
 
@@ -14,11 +15,13 @@ export const categoryRouter=router({
         .query(async ({input})=>{
             const {page,limit}=input;
             const skip=(page-1)*limit;
-            const categories=await Category.find().skip(skip).limit(limit).lean();
-            const totalCategories=await Category.countDocuments()
+            // Use CategoryModel for querying
+            const categories = await CategoryModel.find().skip(skip).limit(limit).lean<ICategoryDocument[]>(); // Use lean with type
+            const totalCategories = await CategoryModel.countDocuments()
 
             return {
-                categories:categories.map(c=>({...c,_id:c._id.toString()})),
+                // Map _id to string if clients expect it as string directly from this endpoint
+                categories: categories.map(c => ({ ...c, _id: c._id.toString() })),
                 totalPages:Math.ceil(totalCategories/limit),
                 currentPage:page,
                 totalCategories
@@ -26,9 +29,12 @@ export const categoryRouter=router({
         }),
     getUserInterests:protectedProcedure
         .query(async ({ctx})=>{
-            const user=await User.findById(ctx.user._id).populate('interestedCategories')
-            if(!user) throw new TRPCError({code:'NOT_FOUND',message:'User not found'})
-            return user.interestedCategories.map((cat:ICategory)=>cat._id.toString())
+            // Use UserModel for querying
+            const user = await UserModel.findById(ctx.user._id).populate<{ interestedCategories: ICategoryDocument[] }>('interestedCategories');
+            if(!user) throw new TRPCError({code:'NOT_FOUND',message:'User not found'});
+            
+            // interestedCategories will be an array of ICategoryDocument
+            return user.interestedCategories.map((cat: ICategoryDocument) => cat._id.toString());
         }),
     updateUserInterests:protectedProcedure
         .input(z.object({
@@ -37,13 +43,15 @@ export const categoryRouter=router({
             }))
         }))
         .mutation(async ({ctx,input})=>{
-            const user=await User.findById(ctx.user._id);
+            // Use UserModel for querying
+            const user = await UserModel.findById(ctx.user._id);
             if(!user) throw new TRPCError({
                 code:'NOT_FOUND',
                 message:'User not found'
             })
-            user.interestedCategories=input.categoryIds.map(id=>new mongoose.Types.ObjectId(id))
-            await user.save()
+            // Ensure user.interestedCategories is correctly typed or cast if necessary
+            user.interestedCategories = input.categoryIds.map(id => new mongoose.Types.ObjectId(id));
+            await user.save();
             return {
                 success:true,
                 message:'Interests updated successfully'

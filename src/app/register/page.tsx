@@ -1,3 +1,4 @@
+// src/app/register/page.tsx
 'use client';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -10,6 +11,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { TRPCClientError } from '@trpc/client'; // Import TRPCClientError
+import type { AppRouter } from '@/server/trpc';
 
 const registerSchema = z.object({
   name: z.string().min(3, { message: "Name must be at least 3 characters." }),
@@ -24,6 +27,11 @@ const registerSchema = z.object({
 
 type RegisterFormData = z.infer<typeof registerSchema>;
 
+interface RegisterErrorCause {
+    email?: string;
+    isConflict?: boolean;
+}
+
 export default function RegisterPage() {
   const router = useRouter();
   const [serverError, setServerError] = useState<string | null>(null);
@@ -35,11 +43,43 @@ export default function RegisterPage() {
     onSuccess: (data) => {
       router.push(`/verify-email?email=${encodeURIComponent(data.email)}`);
     },
-    onError: (error) => {
-      if (!error.message.includes('verification email')) {
-        setServerError(error.message || "Registration failed. Please try again.");
-      } else {
-        router.push(`/verify-email?email=${encodeURIComponent(error.data?.email || '')}`);
+    onError: (error) => { // error is TRPCClientErrorLike<AppRouter> by inference
+      setServerError(error.message || "Registration failed. Please try again.");
+      
+      if (error.data?.code === 'CONFLICT') {
+        // Accessing cause might require checking the specific error instance or its shape
+        // For TRPCClientError, `cause` might be on the original error if it's wrapped.
+        // Let's try to access it more robustly.
+        // The `cause` we set on the server in TRPCError should be part of the `error.data` payload
+        // if the default error formatter is used, or on `error.meta` if custom.
+        // Based on TRPCError structure, `cause` should be on the error object itself if it's an instance of TRPCError from the server.
+        // However, the client receives TRPCClientError.
+        // Let's assume `error.data` might contain the `cause` if it's passed through the error formatter.
+
+        // A common way `cause` is propagated is through the `data` part of the error shape
+        // when you construct TRPCError({ code, message, cause }) on the server.
+        // The `cause` you added on the backend TRPCError is usually available in `error.data.cause`
+        // if it's not a standard JS Error `cause`.
+        // Let's assume the server-side `cause` is packed into `error.data` by tRPC.
+        // However, `error.data` on the client is `DefaultErrorData` which doesn't include `cause`.
+
+        // The `cause` property on the `TRPCError` instance created on the server
+        // should be accessible on the `TRPCClientError` instance on the client as `error.cause`.
+        // The `TRPCClientErrorLike` type might be too generic. Let's check `error.cause`.
+        
+        const typedError = error as TRPCClientError<AppRouter>; // Cast to the more specific client error
+        
+        if (typedError.cause && typeof typedError.cause === 'object' && typedError.cause !== null) {
+            const cause = typedError.cause as RegisterErrorCause; // Now assert its shape
+            if (cause.email) {
+              setTimeout(() => {
+                router.push(`/verify-email?email=${encodeURIComponent(cause.email as string)}`);
+              }, 2000);
+            }
+        } else {
+            // Fallback or log if cause is not found as expected
+            console.warn("CONFLICT error, but email cause not found directly on error.cause. Error data:", error.data);
+        }
       }
     },
   });
@@ -73,8 +113,8 @@ export default function RegisterPage() {
               <Input id="password" type="password" placeholder="Enter" {...register('password')} className='h-12'  />
               {errors.password && <p className="text-red-500 text-xs mt-1">{errors.password.message}</p>}
             </div>
-            <Button type="submit" className="w-full h-12 bg-black" disabled={registerMutation.isLoading || isSubmitting}>
-              {registerMutation.isLoading || isSubmitting ? 'Creating Account...' : 'CREATE ACCOUNT'}
+            <Button type="submit" className="w-full h-12 bg-black" disabled={registerMutation.isPending || isSubmitting}>
+              {registerMutation.isPending || isSubmitting ? 'Creating Account...' : 'CREATE ACCOUNT'}
             </Button>
           </form>
         </CardContent>

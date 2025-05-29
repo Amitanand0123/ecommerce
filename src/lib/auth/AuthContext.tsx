@@ -14,8 +14,8 @@ interface User {
 
 interface AuthContextType {
   user: User | null;
-  isLoading: boolean;
-  login: (token: string, user: User) => void; // User type here
+  isLoading: boolean; // Reflects the auth check process of this provider
+  login: (token: string, user: User) => void;
   logout: () => void;
 }
 
@@ -23,43 +23,51 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  // This isLoading state is for the AuthProvider's own initialization/auth check phase
+  const [authProviderIsLoading, setAuthProviderIsLoading] = useState(true);
   const router = useRouter();
 
-  // Remove or underscore currentUserError
-  // const { data: currentUser, error: currentUserError } = trpc.auth.getCurrentUser.useQuery(undefined, {
-  const { data: currentUser } = trpc.auth.getCurrentUser.useQuery(undefined, { // Corrected line
-    retry: false,
-    onSettled: () => {
-      setIsLoading(false);
-    },
-    // If an error occurs in getCurrentUser, `currentUser` will be undefined.
-    // The useEffect below will handle setting `user` to `null`.
+  const { 
+    data: currentUserData, // Renamed to avoid conflict with a potential 'currentUser' variable
+    isLoading: isCurrentUserQueryLoading, // Query is loading for the first time
+    isFetching: isCurrentUserQueryFetching, // Query is fetching (initial or subsequent)
+  } = trpc.auth.getCurrentUser.useQuery(undefined, {
+    retry: false, // Don't retry on auth errors during initial load
+    // `staleTime` and `cacheTime` can be configured here if needed
   });
 
   useEffect(() => {
-    if (currentUser) {
-      setUser(currentUser as User); 
-    } else {
-      setUser(null); 
+    // Determine if the auth state is settled (query has finished its initial fetch attempt)
+    if (!isCurrentUserQueryLoading && !isCurrentUserQueryFetching) {
+      setAuthProviderIsLoading(false);
+      
+      if (currentUserData) {
+        setUser(currentUserData as User); // Cast is okay if UserOutputSchema matches client User
+      } else {
+        // If data is null/undefined and query is no longer loading/fetching, means no user or error
+        setUser(null);
+      }
     }
-  }, [currentUser]);
+  }, [currentUserData, isCurrentUserQueryLoading, isCurrentUserQueryFetching]);
 
-  const login = (token: string, userData: User) => { 
+  const login = (token: string, userData: User) => {
     localStorage.setItem('token', token);
     setUser(userData);
+    setAuthProviderIsLoading(false); // After login, auth state is known
   };
 
   const logout = () => {
     localStorage.removeItem('token');
     setUser(null);
-    if (typeof window !== 'undefined' && !['/login', '/register'].includes(window.location.pathname)) {
+    setAuthProviderIsLoading(false); // After logout, auth state is known (not logged in)
+    // Redirect if not on public auth pages
+    if (typeof window !== 'undefined' && !['/login', '/register', '/verify-email'].includes(window.location.pathname)) {
         router.push('/login');
     }
   };
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, logout }}>
+    <AuthContext.Provider value={{ user, isLoading: authProviderIsLoading, login, logout }}>
       {children}
     </AuthContext.Provider>
   );
