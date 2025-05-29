@@ -26,25 +26,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
 
-  // The data from getCurrentUser should now also conform to User or null
-  const { data: currentUser, error: currentUserError } = trpc.auth.getCurrentUser.useQuery(undefined, {
+  // Remove or underscore currentUserError
+  // const { data: currentUser, error: currentUserError } = trpc.auth.getCurrentUser.useQuery(undefined, {
+  const { data: currentUser } = trpc.auth.getCurrentUser.useQuery(undefined, { // Corrected line
     retry: false,
     onSettled: () => {
       setIsLoading(false);
     },
-    // No explicit onError needed here if onSettled handles isLoading
-    // and useEffect below handles setting user to null if currentUser is null/undefined
+    // If an error occurs in getCurrentUser, `currentUser` will be undefined.
+    // The useEffect below will handle setting `user` to `null`.
   });
 
   useEffect(() => {
     if (currentUser) {
-      setUser(currentUser as User); // Cast is safe if backend UserOutputSchema matches User interface
+      setUser(currentUser as User); 
     } else {
-      setUser(null); // If currentUser is null or undefined (e.g., due to error or no session)
+      setUser(null); 
     }
   }, [currentUser]);
 
-  const login = (token: string, userData: User) => { // Parameter name changed for clarity
+  const login = (token: string, userData: User) => { 
     localStorage.setItem('token', token);
     setUser(userData);
   };
@@ -52,7 +53,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = () => {
     localStorage.removeItem('token');
     setUser(null);
-    // Redirect only if not already on a public page to avoid loops
     if (typeof window !== 'undefined' && !['/login', '/register'].includes(window.location.pathname)) {
         router.push('/login');
     }
