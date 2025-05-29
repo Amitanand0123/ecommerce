@@ -6,7 +6,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Button } from "@/components/ui/button";
 
 export default function Header() {
-  const { user, isLoading, logout } = useAuth();
+  const { user, logout } = useAuth();
 
   return (
     <header>
