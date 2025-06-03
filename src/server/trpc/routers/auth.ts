@@ -1,16 +1,18 @@
-// src/server/trpc/routers/auth.ts
-import UserModel from "@/server/db/models/User"; // Renamed import for clarity, UserModel is the default export
-import { protectedProcedure, publicProcedure, router} from "../trpc"; // Assuming ContextUser is exported from trpc
+import UserModel from "@/server/db/models/User";
+import { protectedProcedure, publicProcedure, router } from "../trpc";
 import { z } from 'zod';
 import { TRPCError } from "@trpc/server";
 import { comparePassword, generateToken, generateVerificationCode, hashPassword } from "@/server/utils/authUtils";
 import { sendVerificationEmail } from "@/server/utils/mailer";
+import { serialize } from 'cookie';
 
 const UserOutputSchema = z.object({
     id: z.string(),
     name: z.string(),
     email: z.string(),
 });
+
+const TOKEN_COOKIE_NAME = 'token';
 
 export const authRouter = router({
     register: publicProcedure
@@ -30,23 +32,23 @@ export const authRouter = router({
                 throw new TRPCError({
                     code: 'CONFLICT',
                     message: 'Email already exists. If you havent verified your account, please check your email or try logging in to resend verification.',
-                    cause: { email: input.email, isConflict: true } 
+                    cause: { email: input.email, isConflict: true }
                 });
             }
             const passwordHash = await hashPassword(input.password);
             const verificationCode = generateVerificationCode();
             const verificationCodeExpires = new Date(Date.now() + 3600000); // 1 hour
 
-            const newUser = new UserModel({ // Use UserModel to create new instance
+            const newUser = new UserModel({
                 name: input.name,
                 email: input.email,
                 passwordHash,
                 verificationCode,
                 verificationCodeExpires,
-                interestedCategories: [] // Initialize if necessary, or handle as per your logic
+                interestedCategories: []
             });
             await newUser.save();
-            
+
             try {
                 await sendVerificationEmail(input.email, verificationCode);
             } catch (emailError: unknown) {
@@ -61,10 +63,10 @@ export const authRouter = router({
                     console.error("Full email sending error object:", emailError);
                 }
             }
-            
+
             return {
                 success: true,
-                email: input.email, 
+                email: input.email,
                 message: 'Registration successful. Please check your email to verify your account.'
             };
         }),
@@ -80,16 +82,15 @@ export const authRouter = router({
                 verificationCode: input.code,
                 verificationCodeExpires: { $gt: new Date() }
             });
-            if (!user) { // user here is IUserDocument | null
+            if (!user) {
                 throw new TRPCError({
                     code: 'BAD_REQUEST',
                     message: 'Invalid or expired verification code.'
                 });
             }
-            // user is now IUserDocument
             user.isVerified = true;
-            user.verificationCode = null; 
-            user.verificationCodeExpires = null; 
+            user.verificationCode = null;
+            user.verificationCodeExpires = null;
             await user.save();
             return {
                 success: true,
@@ -102,40 +103,44 @@ export const authRouter = router({
             email: z.string().email(),
             password: z.string()
         }))
-        .output(z.object({ 
+        .output(z.object({
             success: z.boolean(),
-            token: z.string(),
-            user: UserOutputSchema, 
+            user: UserOutputSchema,
         }))
-        .mutation(async ({ input }) => {
-            const user = await UserModel.findOne({ email: input.email }); // user: IUserDocument | null
+        .mutation(async ({ input, ctx }) => { 
+            const user = await UserModel.findOne({ email: input.email });
             if (!user) {
                 throw new TRPCError({
                     code: 'NOT_FOUND',
                     message: 'Invalid credentials'
                 });
             }
-            // user is now IUserDocument
             if (!user.isVerified) {
                 throw new TRPCError({
                     code: 'FORBIDDEN',
                     message: 'Please verify your email before logging in.',
-                    cause: { email: user.email } 
+                    cause: { email: user.email }
                 });
             }
             const isPasswordValid = await comparePassword(input.password, user.passwordHash);
             if (!isPasswordValid) {
                 throw new TRPCError({
-                    code: 'UNAUTHORIZED', 
+                    code: 'UNAUTHORIZED',
                     message: 'Invalid credentials'
                 });
             }
-            // user._id should now be Types.ObjectId
-            const token = generateToken(user._id.toString()); // This line should now work
+            const token = generateToken(user._id.toString());
+            ctx.resHeaders.append('Set-Cookie', serialize(TOKEN_COOKIE_NAME, token, {
+                httpOnly: true,
+                secure: process.env.NODE_ENV !== 'development', // Use secure cookies in production
+                sameSite: 'lax',
+                maxAge: 60 * 60 * 24 * 7, 
+                path: '/',
+            }));
+
             return {
                 success: true,
-                token,
-                user: { 
+                user: {
                     id: user._id.toString(),
                     name: user.name,
                     email: user.email
@@ -143,13 +148,23 @@ export const authRouter = router({
             };
         }),
 
-    getCurrentUser: protectedProcedure // ctx.user here is ContextUser (non-null)
-        .output(UserOutputSchema.nullable()) 
+    logout: publicProcedure
+        .mutation(async ({ ctx }) => {
+            ctx.resHeaders.append('Set-Cookie', serialize(TOKEN_COOKIE_NAME, '', {
+                httpOnly: true,
+                secure: process.env.NODE_ENV !== 'development',
+                sameSite: 'lax',
+                maxAge: -1,
+                path: '/',
+            }));
+            return { success: true, message: 'Logged out successfully' };
+        }),
+
+    getCurrentUser: protectedProcedure
+        .output(UserOutputSchema.nullable())
         .query(async ({ ctx }) => {
-            // ctx.user is of type ContextUser from trpc.ts
-            // Ensure ContextUser also defines _id as Types.ObjectId if it's from a lean query
             return {
-                id: ctx.user._id.toString(), 
+                id: ctx.user._id.toString(),
                 name: ctx.user.name,
                 email: ctx.user.email,
             };

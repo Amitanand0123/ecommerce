@@ -1,6 +1,5 @@
 import mongoose, { Schema, Document, Model, Types } from 'mongoose';
 
-// Interface for the raw User data structure (attributes of the user)
 export interface IUserAttributes {
   name: string;
   email: string;
@@ -11,14 +10,13 @@ export interface IUserAttributes {
   interestedCategories: Types.ObjectId[];
 }
 
-// Interface for the Mongoose Document (includes IUserAttributes, plus Mongoose properties like _id, and instance methods)
+
 export interface IUserDocument extends IUserAttributes, Document {
   _id: Types.ObjectId; 
   createdAt: Date;
   updatedAt: Date;
 }
 
-// Interface for the Mongoose Model (includes static methods)
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export interface IUserModel extends Model<IUserDocument> {}
 

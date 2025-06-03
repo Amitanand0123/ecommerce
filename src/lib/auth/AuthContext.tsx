@@ -1,11 +1,10 @@
-// src/lib/auth/AuthContext.tsx
 'use client';
-
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { trpc } from '../trpc/client';
+import type { AppRouter } from '@/server/trpc';
+import { TRPCClientError } from '@trpc/client'; 
 
-// This interface should exactly match the UserOutputSchema from the backend
 interface User {
   id: string;
   name: string;
@@ -14,60 +13,78 @@ interface User {
 
 interface AuthContextType {
   user: User | null;
-  isLoading: boolean; // Reflects the auth check process of this provider
-  login: (token: string, user: User) => void;
-  logout: () => void;
+  isLoading: boolean;
+  login: (user: User) => Promise<void>;
+  logout: () => Promise<void>;
+  refetchUser: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  // This isLoading state is for the AuthProvider's own initialization/auth check phase
   const [authProviderIsLoading, setAuthProviderIsLoading] = useState(true);
   const router = useRouter();
 
-  const { 
-    data: currentUserData, // Renamed to avoid conflict with a potential 'currentUser' variable
-    isLoading: isCurrentUserQueryLoading, // Query is loading for the first time
-    isFetching: isCurrentUserQueryFetching, // Query is fetching (initial or subsequent)
+  const {
+    data: currentUserData,
+    isLoading: isCurrentUserQueryLoading,
+    isFetching: isCurrentUserQueryFetching,
+    refetch: refetchCurrentUser
   } = trpc.auth.getCurrentUser.useQuery(undefined, {
-    retry: false, // Don't retry on auth errors during initial load
-    // `staleTime` and `cacheTime` can be configured here if needed
+    retry: (failureCount, error) => {
+      const trpcError = error as TRPCClientError<AppRouter>;
+      if (trpcError && trpcError.data?.code === 'UNAUTHORIZED') {
+        return false;
+      }
+      return failureCount < 2;
+    },
+    refetchOnMount: true,
+  });
+
+  const logoutMutation = trpc.auth.logout.useMutation({
+    onSuccess: () => {
+      setUser(null);
+      setAuthProviderIsLoading(false);
+      if (typeof window !== 'undefined' && !['/login', '/register', '/verify-email'].includes(window.location.pathname)) {
+        router.push('/login');
+      }
+    },
+    onError: (error) => {
+      console.error("Logout failed:", error);
+      setUser(null);
+      setAuthProviderIsLoading(false);
+    }
   });
 
   useEffect(() => {
-    // Determine if the auth state is settled (query has finished its initial fetch attempt)
     if (!isCurrentUserQueryLoading && !isCurrentUserQueryFetching) {
       setAuthProviderIsLoading(false);
-      
       if (currentUserData) {
-        setUser(currentUserData as User); // Cast is okay if UserOutputSchema matches client User
+        setUser(currentUserData as User);
       } else {
-        // If data is null/undefined and query is no longer loading/fetching, means no user or error
         setUser(null);
       }
     }
   }, [currentUserData, isCurrentUserQueryLoading, isCurrentUserQueryFetching]);
 
-  const login = (token: string, userData: User) => {
-    localStorage.setItem('token', token);
-    setUser(userData);
-    setAuthProviderIsLoading(false); // After login, auth state is known
-  };
+  const login = useCallback(async (userData: User) => {
+    setUser(userData); 
+    await refetchCurrentUser();
+    setAuthProviderIsLoading(false);
+  }, [refetchCurrentUser]);
 
-  const logout = () => {
-    localStorage.removeItem('token');
-    setUser(null);
-    setAuthProviderIsLoading(false); // After logout, auth state is known (not logged in)
-    // Redirect if not on public auth pages
-    if (typeof window !== 'undefined' && !['/login', '/register', '/verify-email'].includes(window.location.pathname)) {
-        router.push('/login');
-    }
-  };
+  const logout = useCallback(async () => {
+    setAuthProviderIsLoading(true);
+    await logoutMutation.mutateAsync();
+  }, [logoutMutation]);
+
+  const refetchUser = useCallback(() => {
+    refetchCurrentUser();
+  }, [refetchCurrentUser]);
 
   return (
-    <AuthContext.Provider value={{ user, isLoading: authProviderIsLoading, login, logout }}>
+    <AuthContext.Provider value={{ user, isLoading: authProviderIsLoading, login, logout, refetchUser }}>
       {children}
     </AuthContext.Provider>
   );

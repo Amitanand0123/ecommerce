@@ -1,16 +1,14 @@
-// src/app/verify-email/page.tsx
 'use client';
-import React, { useState, useEffect, ChangeEvent, KeyboardEvent, useRef, Suspense } from 'react'; // Import Suspense
+import React, { useState, useEffect, ChangeEvent, KeyboardEvent, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { trpc } from '@/lib/trpc/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 
-// Create a new component that uses useSearchParams
 function VerifyEmailForm() {
   const router = useRouter();
-  const searchParams = useSearchParams(); // This hook causes the issue
+  const searchParams = useSearchParams(); 
   const email = searchParams.get('email') || '';
   const [code, setCode] = useState<string[]>(Array(8).fill(''));
   const [serverError, setServerError] = useState<string | null>(null);
@@ -81,10 +79,7 @@ function VerifyEmailForm() {
   
   const maskedEmail = email ? `${email.substring(0,3)}***@${email.split('@')[1]}` : 'your email address';
 
-  if (!email && typeof window !== 'undefined') { // Added a check for window for client-side only redirect logic
-    // This effect already handles redirect if email is not present,
-    // but an early return with a loader might be good if email is truly essential for rendering anything.
-    // For now, the useEffect handles it. A simple loading state could be returned here too.
+  if (!email && typeof window !== 'undefined') {
     return <div className="flex justify-center items-center min-h-screen"><p>Loading...</p></div>;
   }
 
@@ -133,7 +128,6 @@ function VerifyEmailForm() {
   );
 }
 
-// This is your main page component
 export default function VerifyEmailPage() {
   return (
     <div className="flex justify-center items-start min-h-screen pt-10"> {/* Added pt-10 for consistency */}

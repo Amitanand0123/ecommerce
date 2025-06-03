@@ -8,9 +8,13 @@ import { Button } from "@/components/ui/button";
 export default function Header() {
   const { user, logout } = useAuth();
 
+  const handleLogout = async () => {
+    await logout();
+    
+  };
+
   return (
     <header >
-      {/* Top Section - Help, Orders & Returns, User Info */}
       <div className="bg-white border-b border-gray-200 mx-4">
         <div className="container mx-auto px-4 md:px-0">
           <div className="flex justify-end items-center py-2 text-sm space-x-6">
@@ -24,7 +28,7 @@ export default function Header() {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={logout} className="cursor-pointer">
+                  <DropdownMenuItem onClick={handleLogout} className="cursor-pointer"> {/* Updated onClick */}
                     <LogOut className="mr-2 h-4 w-4" />
                     <span>Logout</span>
                   </DropdownMenuItem>
@@ -37,7 +41,6 @@ export default function Header() {
         </div>
       </div>
 
-      {/* Main Navigation Section */}
       <div className="bg-white border-b mx-4">
         <div className="container mx-auto py-4 px-4 md:px-0">
           <div className="flex justify-between items-center">
@@ -61,7 +64,6 @@ export default function Header() {
         </div>
       </div>
 
-      {/* Promotional Banner */}
       <div className="bg-gray-100 text-center py-2 text-sm">
         <div className="container mx-auto flex items-center justify-center">
           <ChevronLeft size={16} className="text-gray-600" />

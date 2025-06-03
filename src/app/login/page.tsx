@@ -1,3 +1,4 @@
+// src/app/(auth)/login/page.tsx
 'use client';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -29,9 +30,9 @@ export default function LoginPage() {
   });
 
   const loginMutation = trpc.auth.login.useMutation({
-    onSuccess: (data) => {
-      if (data.token && data.user) {
-        login(data.token, data.user);
+    onSuccess: async (data) => {
+      if (data.user) {
+        await login(data.user);
         router.push('/interests');
       }
     },
@@ -91,7 +92,7 @@ export default function LoginPage() {
         <CardFooter className="flex flex-col items-center">
           <hr className="w-full border-t border-gray-300" />
           <p className="text-sm mt-8 pb-4">
-            Don&apos;t have an Account?{' '}
+            Dont have an Account?{' '}
             <Link href="/register" className="font-semibold text-black hover:underline">
               SIGN UP
             </Link>

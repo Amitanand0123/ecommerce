@@ -31,7 +31,6 @@ async function dbConnect(): Promise<MongooseInstanceType> {
     if (cached.conn) {
         return cached.conn;
     }
-
     if (!cached.promise) {
         const opts = {
             bufferCommands: false, 
@@ -40,7 +39,6 @@ async function dbConnect(): Promise<MongooseInstanceType> {
             return mongooseInstance;
         });
     }
-
     try {
         cached.conn = await cached.promise;
     } catch (e) {

@@ -1,4 +1,3 @@
-// src/app/interests/page.tsx
 'use client';
 import React from 'react';
 import { useState, useEffect } from 'react';
@@ -50,17 +49,12 @@ export default function InterestsPage() {
     setSelectedInterests(newSet);
     updateInterestsMutation.mutate({ categoryIds: Array.from(newSet) });
   };
-
-  // Use a type assertion here to tell TypeScript the expected shape
   const categories: PlainCategory[] = (categoriesData?.categories as PlainCategory[] | undefined) || [];
-  // Or, slightly more verbose but perhaps clearer:
-  // const categories: PlainCategory[] = categoriesData?.categories ? categoriesData.categories as PlainCategory[] : [];
 
   const totalPages = categoriesData?.totalPages || 1;
 
   const renderPagination = () => {
     const buttons: React.ReactElement[] = [];
-    // ... (rest of pagination logic)
     let startPage: number, endPage: number;
 
     if (currentPage <= 3) {
@@ -149,7 +143,7 @@ export default function InterestsPage() {
             <p>No categories found.</p>
           )}
           <div className="space-y-3 pb-6">
-            {categories.map((category) => ( // Type PlainCategory is inferred from the `categories` array type
+            {categories.map((category) => (
               <div key={category._id} className="flex items-center space-x-3 mt-6 rounded hover:bg-gray-50">
                 <Checkbox
                   id={category._id}

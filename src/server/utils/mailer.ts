@@ -5,7 +5,7 @@ const MAILTRAP_PORT = process.env.MAILTRAP_PORT;
 const MAILTRAP_USER = process.env.MAILTRAP_USER;
 const MAILTRAP_PASS = process.env.MAILTRAP_PASS;
 
-const APP_FROM_EMAIL = process.env.APP_FROM_EMAIL || `"Your ECOMMERCE App" <noreply@example.com>`;
+const APP_FROM_EMAIL = process.env.APP_FROM_EMAIL || `"ECOMMERCE App" <noreply@example.com>`;
 
 if (!MAILTRAP_HOST || !MAILTRAP_PORT || !MAILTRAP_USER || !MAILTRAP_PASS) {
   console.error('Mailtrap credentials are missing. Email functionality will be impaired.');

@@ -12,17 +12,15 @@ process.on('unhandledRejection', (reason, promise) => {
 
 const DESIRED_CATEGORIES = 100;
 
-// Define a more specific type for write errors
 interface MongoWriteError {
   code: number;
   errmsg: string;
   index: number;
-  // Add other properties if present in your specific MongoDB version's error object
 }
 
 interface MongoError extends Error {
     code?: number;
-    writeErrors?: MongoWriteError[]; // Use the more specific type
+    writeErrors?: MongoWriteError[];
 }
 
 async function seedCategories() {

@@ -1,4 +1,3 @@
-// src/app/register/page.tsx
 'use client';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -11,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { TRPCClientError } from '@trpc/client'; // Import TRPCClientError
+import { TRPCClientError } from '@trpc/client';
 import type { AppRouter } from '@/server/trpc';
 
 const registerSchema = z.object({
@@ -43,41 +42,21 @@ export default function RegisterPage() {
     onSuccess: (data) => {
       router.push(`/verify-email?email=${encodeURIComponent(data.email)}`);
     },
-    onError: (error) => { // error is TRPCClientErrorLike<AppRouter> by inference
+    onError: (error) => { 
       setServerError(error.message || "Registration failed. Please try again.");
       
       if (error.data?.code === 'CONFLICT') {
-        // Accessing cause might require checking the specific error instance or its shape
-        // For TRPCClientError, `cause` might be on the original error if it's wrapped.
-        // Let's try to access it more robustly.
-        // The `cause` we set on the server in TRPCError should be part of the `error.data` payload
-        // if the default error formatter is used, or on `error.meta` if custom.
-        // Based on TRPCError structure, `cause` should be on the error object itself if it's an instance of TRPCError from the server.
-        // However, the client receives TRPCClientError.
-        // Let's assume `error.data` might contain the `cause` if it's passed through the error formatter.
-
-        // A common way `cause` is propagated is through the `data` part of the error shape
-        // when you construct TRPCError({ code, message, cause }) on the server.
-        // The `cause` you added on the backend TRPCError is usually available in `error.data.cause`
-        // if it's not a standard JS Error `cause`.
-        // Let's assume the server-side `cause` is packed into `error.data` by tRPC.
-        // However, `error.data` on the client is `DefaultErrorData` which doesn't include `cause`.
-
-        // The `cause` property on the `TRPCError` instance created on the server
-        // should be accessible on the `TRPCClientError` instance on the client as `error.cause`.
-        // The `TRPCClientErrorLike` type might be too generic. Let's check `error.cause`.
         
-        const typedError = error as TRPCClientError<AppRouter>; // Cast to the more specific client error
+        const typedError = error as TRPCClientError<AppRouter>;
         
         if (typedError.cause && typeof typedError.cause === 'object' && typedError.cause !== null) {
-            const cause = typedError.cause as RegisterErrorCause; // Now assert its shape
+            const cause = typedError.cause as RegisterErrorCause;
             if (cause.email) {
               setTimeout(() => {
                 router.push(`/verify-email?email=${encodeURIComponent(cause.email as string)}`);
               }, 2000);
             }
         } else {
-            // Fallback or log if cause is not found as expected
             console.warn("CONFLICT error, but email cause not found directly on error.cause. Error data:", error.data);
         }
       }
